@@ -1,0 +1,53 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+
+# Import database and models FIRST
+from app.database import engine, Base
+import app.database_models  # This registers the models with Base
+
+# Now import routes
+from app.api.v1 import auth, users, templates, labels, integrations
+from app.config import settings
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="SnowWhite API",
+    description="Enterprise Label & QR Code Generation System",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
+
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "SnowWhite API"}
+
+# API v1 routes
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
+app.include_router(labels.router, prefix="/api/v1/labels", tags=["labels"])
+app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: snowwhite-db
+    environment:
+      POSTGRES_USER: snowwhite
+      POSTGRES_PASSWORD: snowwhite_dev_password
+      POSTGRES_DB: snowwhite_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: snowwhite-api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://snowwhite:snowwhite_dev_password@db:5432/snowwhite_db
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-key-change-in-production
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+  test-watcher:
+    build: .
+    container_name: snowwhite-test-watcher
+    command: python -m pytest_watch -- -v --tb=short
+    environment:
+      DATABASE_URL: postgresql://snowwhite:snowwhite_dev_password@db:5432/snowwhite_db
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-key-change-in-production
+    depends_on:
+      - db
+      - api
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
