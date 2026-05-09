@@ -1,5 +1,5 @@
 """Data Validator"""
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 
 class ValidationError:
     def __init__(self, field: str, row: int, message: str):
@@ -9,7 +9,7 @@ class ValidationError:
 
 class DataValidator:
     def __init__(self):
-        self.rules: Dict[str, List[str]] = {}
+        self.rules = {}
     
     def add_required(self, field: str):
         if field not in self.rules:
@@ -21,7 +21,7 @@ class DataValidator:
         for field, rules in self.rules.items():
             value = row.get(field)
             if 'required' in rules and (value is None or str(value).strip() == ""):
-                errors.append(ValidationError(field, row_num, f"{field} is required"))
+                errors.append(ValidationError(field, row_num, f"{field} required"))
         return errors
     
     def validate_batch(self, rows: List[Dict]) -> Dict:

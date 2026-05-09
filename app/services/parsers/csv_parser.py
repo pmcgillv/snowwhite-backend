@@ -16,8 +16,3 @@ class CSVParser:
         delimiter = CSVParser.detect_delimiter(content)
         reader = csv.DictReader(StringIO(content), delimiter=delimiter)
         return list(reader.fieldnames or []), list(reader)
-
-if __name__ == "__main__":
-    test = "name,email\nJohn,john@test.com"
-    headers, rows = CSVParser.parse(test)
-    print(f"[OK] {len(rows)} rows")

@@ -1,4 +1,4 @@
-"""Serialization Counter Engine"""
+"""Serialization Counter"""
 from typing import List
 
 class CounterFormatter:
@@ -24,10 +24,7 @@ class SerializationCounter:
         return formatted
     
     def generate_batch(self, count: int, prefix: str = "", suffix: str = "", pad_width: int = 0) -> List[str]:
-        results = []
-        for _ in range(count):
-            results.append(self.generate_next(prefix, suffix, pad_width))
-        return results
+        return [self.generate_next(prefix, suffix, pad_width) for _ in range(count)]
     
     def get_preview(self, count: int, prefix: str = "", suffix: str = "", pad_width: int = 0) -> List[str]:
         preview = []
