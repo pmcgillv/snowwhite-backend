@@ -65,7 +65,7 @@ async def batch_upload(
         db.add(job)
         db.commit()
         
-        upload_dir = "/app/uploads"
+        upload_dir = os.environ.get("UPLOAD_DIR", os.path.join(os.getcwd(), "uploads"))
         os.makedirs(upload_dir, exist_ok=True)
         csv_path = f"{upload_dir}/{job_id}.csv"
         with open(csv_path, 'wb') as f:
