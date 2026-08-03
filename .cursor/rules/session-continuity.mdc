@@ -1,0 +1,36 @@
+---
+description: Resume named prior work; never scaffold into the wrong repo; honor terse continue/do-N commands
+alwaysApply: true
+---
+
+# Session continuity and wrong-repo guard
+
+## When the user names prior work
+
+If the user asks "where is my … build", claims recent planning is missing, or says "continue" after locating a named effort:
+
+1. Locate first — search reachable cloud agents, repos, docs, and transcripts for that named work.
+2. Report a concrete handle (agent URL, repo, branch) or a clear "not in this environment" with ranked recovery paths.
+3. Never imply the work did not happen because this environment cannot see it.
+4. Prefer recovering the brief (desktop chat paste, local files, other agent) over starting greenfield.
+
+## Wrong-repo guard
+
+If the run title or stated product intent does not match the attached repository:
+
+- Do not scaffold or implement that product in the mismatched repo.
+- Surface the mismatch and wait for a confirmed target repo/stack or a pasted brief.
+
+## Terse control language
+
+- "continue" / "ok let continue" means resume the prior named intent, not redefine the task.
+- "do N" / "1" means execute option N from the agent's last numbered list immediately — do not re-ask which option.
+- Keep progress moving on short commands; only stop to confirm when the next action would be destructive or write into the wrong codebase.
+
+## Recovery ladder (default order)
+
+1. Desktop Cursor chat history for the same workspace (Agents sidebar / Show Chat History).
+2. Local uncommitted files on the user's machine.
+3. Other cloud agents / environments / repos.
+4. Connected docs (Notion, Miro, Figma) if authenticated.
+5. Only then ask for a fresh brief.
