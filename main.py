@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, users, templates, labels, integrations
+from app.api.v1 import auth, users, templates, labels, integrations, batch_labels
+from app.api.v1.routers.qrcode_router import router as qrcode_router
+from app.api.v1.routers.phase2_router import router as phase2_router
+from app.api.v1.routers.pdf_barcode_router import router as pdf_barcode_router
 from app.database import Base, engine
 import logging
 
@@ -42,6 +45,10 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
 app.include_router(labels.router, prefix="/api/v1/labels", tags=["labels"])
 app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
+app.include_router(batch_labels.router)
+app.include_router(qrcode_router)
+app.include_router(phase2_router)
+app.include_router(pdf_barcode_router)
 
 if __name__ == "__main__":
     import uvicorn
