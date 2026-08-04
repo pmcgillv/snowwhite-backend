@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useFetch } from '../hooks/useFetch'
 import { IconChevronDown } from './Icons'
 import type { DashboardSummary, ActionItem } from '../api/client'
@@ -24,6 +25,17 @@ const METRIC_LABELS: Record<KpiMetric, string> = {
   nextDebtTransfer: 'Next Debt Transfer',
 }
 
+const METRIC_ANCHORS: Record<KpiMetric, string> = {
+  payoffDate: 'date',
+  yearsToPayoff: 'years',
+  interestSaved: 'interest-saved',
+  interestRemaining: 'interest-remaining',
+  principalPaid: 'principal-paid',
+  principalRemaining: 'principal-remaining',
+  discretionary: 'discretionary',
+  nextDebtTransfer: 'next-transfer',
+}
+
 const ALL_METRICS: KpiMetric[] = [
   'payoffDate',
   'yearsToPayoff',
@@ -43,6 +55,15 @@ const DEFAULT_TILES: KpiMetric[] = [
   'discretionary',
 ]
 
+interface DashExtras extends DashboardSummary {
+  yearsToPayOff?: number
+  interestSavedActual?: number
+  interestRemaining?: number
+  principalPaid?: number
+  principalRemaining?: number
+  nextDebtTransfer?: { date: string; amount: number; actionId: string } | null
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -52,37 +73,40 @@ const fmt = (n: number) =>
 
 function computeValue(
   metric: KpiMetric,
-  dash: DashboardSummary,
+  dash: DashExtras,
   nextAction: ActionItem | null,
 ): string {
   switch (metric) {
-    case 'payoffDate': {
+    case 'payoffDate':
       return new Date(dash.debtFreeDate).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
       })
-    }
     case 'yearsToPayoff': {
+      if (dash.yearsToPayOff != null) return `${dash.yearsToPayOff.toFixed(1)} yrs`
       const ms = new Date(dash.debtFreeDate).getTime() - Date.now()
       const years = ms / (1000 * 60 * 60 * 24 * 365.25)
       return `${Math.max(0, years).toFixed(1)} yrs`
     }
-    case 'interestSaved': {
+    case 'interestSaved':
       return fmt(dash.interestSavedProjected)
-    }
-    case 'interestRemaining': {
-      return fmt(dash.totalDebt * 0.18)
-    }
-    case 'principalPaid': {
-      return fmt(dash.totalDebt * 0.12)
-    }
-    case 'principalRemaining': {
-      return fmt(dash.totalDebt)
-    }
-    case 'discretionary': {
+    case 'interestRemaining':
+      return fmt(dash.interestRemaining ?? dash.totalDebt * 0.18)
+    case 'principalPaid':
+      return fmt(dash.principalPaid ?? dash.totalDebt * 0.08)
+    case 'principalRemaining':
+      return fmt(dash.principalRemaining ?? dash.totalDebt)
+    case 'discretionary':
       return fmt(dash.discretionaryIncome)
-    }
     case 'nextDebtTransfer': {
+      const next = dash.nextDebtTransfer
+      if (next) {
+        const date = new Date(next.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        })
+        return `${fmt(next.amount)} · ${date}`
+      }
       if (!nextAction) return '—'
       const date = new Date(nextAction.suggestedDate).toLocaleDateString('en-US', {
         month: 'short',
@@ -99,7 +123,7 @@ function computeValue(
 
 interface KpiTileProps {
   metric: KpiMetric
-  dash: DashboardSummary
+  dash: DashExtras
   nextAction: ActionItem | null
   onSwitch: (m: KpiMetric) => void
 }
@@ -107,6 +131,7 @@ interface KpiTileProps {
 function KpiTile({ metric, dash, nextAction, onSwitch }: KpiTileProps) {
   const [open, setOpen] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   const value = computeValue(metric, dash, nextAction)
 
   useEffect(() => {
@@ -126,6 +151,7 @@ function KpiTile({ metric, dash, nextAction, onSwitch }: KpiTileProps) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        title="Switch metric shown on this tile"
       >
         {METRIC_LABELS[metric]}
         <IconChevronDown size={12} />
@@ -148,14 +174,21 @@ function KpiTile({ metric, dash, nextAction, onSwitch }: KpiTileProps) {
           ))}
         </div>
       )}
-      <div className="kpi-tile__value">{value}</div>
+      <button
+        type="button"
+        className="kpi-tile__value kpi-tile__value--link"
+        onClick={() => navigate(`/app/payoff#metric-${METRIC_ANCHORS[metric]}`)}
+        title={`Open full ${METRIC_LABELS[metric]} details`}
+      >
+        {value}
+      </button>
     </div>
   )
 }
 
 export function KpiBar() {
   const [tiles, setTiles] = useState<KpiMetric[]>(DEFAULT_TILES)
-  const dash = useFetch<DashboardSummary>('/api/dashboard')
+  const dash = useFetch<DashExtras>('/api/dashboard')
   const actionsRes = useFetch<{ actions: ActionItem[] }>('/api/actions')
 
   const nextAction =
@@ -184,6 +217,9 @@ export function KpiBar() {
           onSwitch={(m) => setTiles((prev) => prev.map((t, j) => (j === i ? m : t)))}
         />
       ))}
+      <Link to="/app/payoff" className="kpi-bar__all">
+        View all metrics →
+      </Link>
     </div>
   )
 }

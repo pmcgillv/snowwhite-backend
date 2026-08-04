@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ActionItem, ActionStatus } from '@money-max/shared';
-import { seedAccounts } from '../data/seed.js';
 import { generateActionPlan } from '../engine/actionPlan.js';
 import { getSettings } from './settings.js';
+import { getAccounts } from './accounts.js';
 
 // In-memory store so approve/execute/dismiss persist within a session
 const actionStore = new Map<string, ActionItem>();
@@ -11,7 +11,7 @@ let storeInitialised = false;
 function ensureStore(): Map<string, ActionItem> {
   if (!storeInitialised) {
     const { actions } = generateActionPlan({
-      accounts: seedAccounts,
+      accounts: getAccounts(),
       mode: getSettings().methodMode,
     });
     for (const a of actions) {

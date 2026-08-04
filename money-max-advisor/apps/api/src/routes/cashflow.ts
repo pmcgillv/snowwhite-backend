@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { CashflowPoint } from '@money-max/shared';
-import { seedIncomeStreams, seedBills, seedAccounts } from '../data/seed.js';
+import { seedIncomeStreams, seedBills } from '../data/seed.js';
+import { getAccounts } from './accounts.js';
 
 type RangeParam = '30d' | '60d' | '90d' | '180d' | '365d';
 
@@ -27,7 +28,7 @@ export async function cashflowRoutes(app: FastifyInstance): Promise<void> {
 }
 
 function buildCashflowSeries(days: number): CashflowPoint[] {
-  const checking = seedAccounts.find((a) => a.type === 'checking');
+  const checking = getAccounts().find((a) => a.type === 'checking');
   let runningBalance = checking?.balance ?? 0;
   const points: CashflowPoint[] = [];
 

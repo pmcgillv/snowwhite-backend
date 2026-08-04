@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ChatRequest, ChatResponse } from '@money-max/shared';
-import { seedAccounts } from '../data/seed.js';
 import { generateActionPlan } from '../engine/actionPlan.js';
 import { getSettings } from './settings.js';
+import { getAccounts } from './accounts.js';
 
 const GREETING = `Hi! I'm your Money Max advisor. I can help you reduce debt faster, optimise your cash-flow timing, and build wealth. What would you like to work on today?`;
 
@@ -59,7 +59,7 @@ export async function advisorRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const lower = message.toLowerCase();
-      const accounts = seedAccounts;
+      const accounts = getAccounts();
       const { actions } = generateActionPlan({
         accounts,
         mode: getSettings().methodMode,

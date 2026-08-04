@@ -276,3 +276,47 @@ describe('generateActionPlan — edge cases', () => {
     expect(projectedInterestSaved).toBeCloseTo(manualSum, 1);
   });
 });
+
+describe('generateActionPlan — interest-only periods', () => {
+  const ioHeloc: Account = {
+    ...helocAcc,
+    interestRateAPR: 28.5, // higher than the CC — but IO, so extras skip it
+    interestOnlyPeriod: {
+      active: true,
+      months: 18,
+      startDate: '2026-01-01',
+      endDate: '2027-07-01',
+    },
+  };
+
+  it('does not sweep extra principal onto interest-only debts', () => {
+    const { actions } = generateActionPlan({
+      accounts: [checkingAcc, savingsAcc, ioHeloc, highAprCard],
+      mode: 'checking_savings',
+    });
+
+    const extrasToIo = actions.filter(
+      (a) =>
+        a.toAccountId === ioHeloc.id &&
+        (a.type === 'sweep' || (a.type === 'debt_payment' && a.amount > (ioHeloc.minimumPayment ?? 0))),
+    );
+    expect(extrasToIo.length).toBe(0);
+
+    const sweep = actions.find((a) => a.type === 'sweep');
+    expect(sweep?.toAccountId).toBe(highAprCard.id);
+  });
+
+  it('schedules interest-only minimum with an explanatory reason', () => {
+    const { actions } = generateActionPlan({
+      accounts: [checkingAcc, savingsAcc, ioHeloc],
+      mode: 'checking_savings',
+    });
+
+    const ioPay = actions.find(
+      (a) => a.toAccountId === ioHeloc.id && a.type === 'debt_payment',
+    );
+    expect(ioPay).toBeDefined();
+    expect(ioPay?.amount).toBe(ioHeloc.minimumPayment);
+    expect(ioPay?.reason.toLowerCase()).toContain('interest-only');
+  });
+});

@@ -9,6 +9,15 @@ export type AccountType =
   | 'heloc'
   | 'investment';
 
+/** New mortgages / HELOCs often start interest-only — principal stays flat until it ends. */
+export interface InterestOnlyPeriod {
+  active: boolean;
+  /** Duration in months from startDate (or from “now” if startDate omitted). */
+  months?: number;
+  startDate?: string; // ISO date
+  endDate?: string;   // ISO date — preferred when known
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -19,6 +28,32 @@ export interface Account {
   creditLimit?: number;      // credit accounts
   minimumPayment?: number;   // debt accounts
   dueDay?: number;           // day of month payment is due (1-31)
+  interestOnlyPeriod?: InterestOnlyPeriod;
+}
+
+/** True when the account is currently in an interest-only window. */
+export function isInterestOnlyActive(
+  account: Pick<Account, 'interestOnlyPeriod'>,
+  asOf: Date = new Date(),
+): boolean {
+  const io = account.interestOnlyPeriod;
+  if (!io?.active) return false;
+  if (io.endDate) {
+    const end = new Date(io.endDate);
+    end.setHours(23, 59, 59, 999);
+    return asOf <= end;
+  }
+  if (io.months != null && io.months > 0) {
+    if (io.startDate) {
+      const end = new Date(io.startDate);
+      end.setMonth(end.getMonth() + io.months);
+      end.setHours(23, 59, 59, 999);
+      return asOf <= end;
+    }
+    // Active with months but no dates → treat as currently in period
+    return true;
+  }
+  return true;
 }
 
 // ── Budget / Bill / IncomeStream ─────────────────────────────────────────────

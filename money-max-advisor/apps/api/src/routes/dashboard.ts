@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { DashboardSummary } from '@money-max/shared';
-import { seedAccounts, seedIncomeStreams, seedBudgets } from '../data/seed.js';
+import { seedIncomeStreams, seedBudgets } from '../data/seed.js';
 import { generateActionPlan } from '../engine/actionPlan.js';
 import { getSettings } from './settings.js';
+import { getAccounts } from './accounts.js';
 
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/dashboard', async (_req, reply) => {
-    const accounts = seedAccounts;
+    const accounts = getAccounts();
     const settings = getSettings();
     const { debtFreeMonths, projectedInterestSaved, actions } = generateActionPlan({
       accounts,

@@ -12,16 +12,27 @@ import type {
 
 const BASE = ''
 
-export const mockDashboard: DashboardSummary = {
-  debtFreeDate: '2027-06-01',
+export const mockDashboard: DashboardSummary & {
+  yearsToPayOff?: number
+  interestRemaining?: number
+  principalPaid?: number
+  principalRemaining?: number
+  nextDebtTransfer?: { date: string; amount: number; actionId: string } | null
+} = {
+  debtFreeDate: '2029-12-01',
   totalDebt: 300000,
-  interestSavedProjected: 8420,
-  interestSavedActual: 2100,
-  discretionaryIncome: 1240,
+  interestSavedProjected: 199,
+  interestSavedActual: 0,
+  discretionaryIncome: 3208,
   emergencyFund: 6500,
   netWorth: -250000,
   monthlyIncome: 8000,
-  monthlyExpenses: 4900,
+  monthlyExpenses: 4792,
+  yearsToPayOff: 3.4,
+  interestRemaining: 840,
+  principalPaid: 24000,
+  principalRemaining: 300000,
+  nextDebtTransfer: { date: '2026-08-06', amount: 4832, actionId: 'act1' },
 }
 
 export const mockAccounts: Account[] = [
@@ -48,6 +59,20 @@ export const mockAccounts: Account[] = [
     type: 'loan',
     balance: -28000,
     interestRateAPR: 6.8,
+  },
+  {
+    id: 'a4',
+    name: 'CU Home Equity LOC',
+    institution: 'Local Credit Union',
+    type: 'heloc',
+    balance: -22500,
+    interestRateAPR: 8.49,
+    minimumPayment: 159,
+    interestOnlyPeriod: {
+      active: true,
+      months: 24,
+      endDate: '2027-09-01',
+    },
   },
 ]
 
@@ -172,6 +197,28 @@ export const mockReport: ReportSummary = {
 export const handlers = [
   http.get(`${BASE}/api/dashboard`, () => HttpResponse.json(mockDashboard)),
   http.get(`${BASE}/api/accounts`, () => HttpResponse.json({ accounts: mockAccounts })),
+  http.post(`${BASE}/api/accounts`, async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string
+      kind?: string
+      balance: number
+      interestOnlyPeriod?: { active: boolean }
+    }
+    return HttpResponse.json(
+      {
+        account: {
+          id: 'a-new',
+          name: body.name,
+          type: body.kind === 'mortgage' ? 'mortgage' : 'loan',
+          balance: -Math.abs(body.balance),
+          interestRateAPR: 0,
+          institution: '',
+          interestOnlyPeriod: body.interestOnlyPeriod,
+        },
+      },
+      { status: 201 },
+    )
+  }),
   http.get(`${BASE}/api/actions`, () => HttpResponse.json({ actions: mockActions })),
   http.get(`${BASE}/api/budgets`, () =>
     HttpResponse.json({ budgets: mockBudgets, bills: mockBills, incomes: mockIncomes }),

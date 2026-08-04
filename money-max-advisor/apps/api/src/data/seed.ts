@@ -68,6 +68,24 @@ export const seedAccounts: Account[] = [
     dueDay: 1,
   },
   {
+    // Demo: new construction / refinance style interest-only window
+    id: 'acc-heloc',
+    name: 'CU Home Equity LOC',
+    type: 'heloc',
+    balance: -22_500.00,
+    interestRateAPR: 8.49,
+    institution: 'Local Credit Union',
+    creditLimit: 80_000,
+    minimumPayment: 159, // roughly interest-only at current balance
+    dueDay: 5,
+    interestOnlyPeriod: {
+      active: true,
+      months: 24,
+      startDate: '2025-09-01',
+      endDate: '2027-09-01',
+    },
+  },
+  {
     id: 'acc-car-loan',
     name: 'Toyota Car Loan',
     type: 'loan',

@@ -46,6 +46,13 @@ export type AccountType =
   | 'heloc'
   | 'investment'
 
+export interface InterestOnlyPeriod {
+  active: boolean
+  months?: number
+  startDate?: string
+  endDate?: string
+}
+
 export interface Account {
   id: string
   name: string
@@ -56,6 +63,7 @@ export interface Account {
   creditLimit?: number
   minimumPayment?: number
   dueDay?: number
+  interestOnlyPeriod?: InterestOnlyPeriod
 }
 
 export interface DashboardSummary {

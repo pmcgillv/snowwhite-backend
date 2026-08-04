@@ -189,7 +189,19 @@ export default function Accounts() {
                   </svg>
                 </div>
                 <div className="account-row__info">
-                  <div className="account-row__name">{a.name}</div>
+                  <div className="account-row__name">
+                    {a.name}
+                    {a.interestOnlyPeriod?.active && (
+                      <span className="account-badge" title="Interest-only period active">
+                        Interest only
+                        {a.interestOnlyPeriod.endDate
+                          ? ` · ends ${a.interestOnlyPeriod.endDate}`
+                          : a.interestOnlyPeriod.months
+                            ? ` · ${a.interestOnlyPeriod.months} mo`
+                            : ''}
+                      </span>
+                    )}
+                  </div>
                   <div className="account-row__meta">
                     {a.institution} · {TYPE_LABELS[a.type]} ·{' '}
                     {a.interestRateAPR.toFixed(2)}% APR
@@ -197,6 +209,9 @@ export default function Accounts() {
                   {a.minimumPayment && (
                     <div className="account-row__sub">
                       Min. payment {fmt(a.minimumPayment)}
+                      {a.interestOnlyPeriod?.active
+                        ? ' (interest-only — principal flat)'
+                        : ''}
                     </div>
                   )}
                 </div>
@@ -282,7 +297,12 @@ export default function Accounts() {
         </section>
       )}
 
-      {showAddModal && <AddAccountModal onClose={() => setShowAddModal(false)} />}
+      {showAddModal && (
+        <AddAccountModal
+          onClose={() => setShowAddModal(false)}
+          onAdded={() => refetch()}
+        />
+      )}
     </div>
   )
 }

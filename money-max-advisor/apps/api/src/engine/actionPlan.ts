@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Account, ActionItem, ActionType, MethodMode } from '@money-max/shared';
+import { isInterestOnlyActive } from '@money-max/shared';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -81,9 +82,16 @@ export function generateActionPlan(ctx: PlanContext): ActionPlanResult {
   );
   const heloc = accounts.find((a) => a.type === 'heloc');
 
-  // Sort debts by APR descending (avalanche)
-  const sortedDebts = [...debts].sort((a, b) => b.interestRateAPR - a.interestRateAPR);
-  const highestAprDebt = sortedDebts[0] as Account | undefined;
+  // Sort debts by APR descending (avalanche). Prefer debts that can take principal
+  // over accounts still in an interest-only period (extra $ doesn't reduce principal).
+  const sortedDebts = [...debts].sort((a, b) => {
+    const aIo = isInterestOnlyActive(a) ? 1 : 0;
+    const bIo = isInterestOnlyActive(b) ? 1 : 0;
+    if (aIo !== bIo) return aIo - bIo;
+    return b.interestRateAPR - a.interestRateAPR;
+  });
+  const avalancheTargets = sortedDebts.filter((d) => !isInterestOnlyActive(d));
+  const highestAprDebt = (avalancheTargets[0] ?? sortedDebts[0]) as Account | undefined;
 
   // Liquid assets
   const totalChecking = checking.reduce((s, a) => s + a.balance, 0);
@@ -134,8 +142,8 @@ export function generateActionPlan(ctx: PlanContext): ActionPlanResult {
   if (mode === 'checking_savings') {
     const checkingAccount = checking[0];
 
-    // Sweep excess checking to highest-APR debt
-    if (highestAprDebt && checkingAccount) {
+    // Sweep excess checking to highest-APR debt that accepts principal
+    if (highestAprDebt && checkingAccount && !isInterestOnlyActive(highestAprDebt)) {
       const checkingSurplus = Math.max(0, checkingAccount.balance - 200); // keep $200 buffer
       if (checkingSurplus > 25) {
         const sweepAmount = Math.min(checkingSurplus, Math.abs(highestAprDebt.balance));
@@ -153,7 +161,7 @@ export function generateActionPlan(ctx: PlanContext): ActionPlanResult {
     }
 
     // Extra payment from savings surplus (above emergency buffer)
-    if (highestAprDebt && liquidSurplus > 200) {
+    if (highestAprDebt && liquidSurplus > 200 && !isInterestOnlyActive(highestAprDebt)) {
       const extraPayment = Math.min(liquidSurplus - 200, Math.abs(highestAprDebt.balance));
       if (extraPayment > 50) {
         const savingsSource =
@@ -173,10 +181,36 @@ export function generateActionPlan(ctx: PlanContext): ActionPlanResult {
       }
     }
 
+    // Interest-only debts: schedule interest (min) only — no extra principal
+    for (const debt of debts) {
+      if (!isInterestOnlyActive(debt)) continue;
+      const minPay = debt.minimumPayment ?? 0;
+      const checkingAccountIo = checking[0];
+      if (minPay > 0 && checkingAccountIo) {
+        const endHint = debt.interestOnlyPeriod?.endDate
+          ? ` until ${debt.interestOnlyPeriod.endDate}`
+          : debt.interestOnlyPeriod?.months
+            ? ` for ~${debt.interestOnlyPeriod.months} months`
+            : '';
+        actions.push(makeAction({
+          type: 'debt_payment',
+          fromAccountId: checkingAccountIo.id,
+          toAccountId: debt.id,
+          amount: minPay,
+          suggestedDate: daysUntilDay(debt.dueDay ?? 1),
+          reason: `Interest-only payment on ${debt.name} (${debt.interestRateAPR}% APR). Principal stays flat${endHint} — extras go to higher-impact debts.`,
+          interestImpact: round2(interestSavedByExtraPayment(debt.balance, debt.interestRateAPR, minPay, 5)),
+          priority: 5,
+        }));
+      }
+    }
+
     // For secondary debts: suggest paying minimums + small extras
-    for (let i = 1; i < sortedDebts.length; i++) {
+    for (let i = 0; i < sortedDebts.length; i++) {
       const debt = sortedDebts[i] as Account;
       if (!debt || debt.type === 'mortgage') continue; // skip mortgage in this pass
+      if (isInterestOnlyActive(debt)) continue; // handled above
+      if (highestAprDebt && debt.id === highestAprDebt.id) continue; // extras already planned
       const minPay = debt.minimumPayment ?? 0;
       if (minPay > 0) {
         const checkingAccount2 = checking[0];
@@ -277,13 +311,32 @@ export function generateActionPlan(ctx: PlanContext): ActionPlanResult {
     (sum, a) => sum + a.interestImpact, 0,
   );
 
-  // Simple debt-free estimate: assume $500/mo extra after plan actions
+  // Simple debt-free estimate: assume $500/mo extra after plan actions.
+  // Interest-only balances don't amortize until the period ends — exclude them
+  // from the principal runway (they're paid down after IO expires).
   const totalDebtExMortgage = debts
-    .filter((d) => d.type !== 'mortgage')
+    .filter((d) => d.type !== 'mortgage' && !isInterestOnlyActive(d))
     .reduce((s, d) => s + Math.abs(d.balance), 0);
-  const debtFreeMonths = totalDebtExMortgage > 0
+  const maxIoMonths = debts
+    .filter((d) => isInterestOnlyActive(d))
+    .reduce((max, d) => {
+      const io = d.interestOnlyPeriod;
+      if (!io) return max;
+      if (io.endDate) {
+        const monthsLeft = Math.max(
+          0,
+          Math.ceil(
+            (new Date(io.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.44),
+          ),
+        );
+        return Math.max(max, monthsLeft);
+      }
+      return Math.max(max, io.months ?? 0);
+    }, 0);
+  const amortMonths = totalDebtExMortgage > 0
     ? Math.ceil(totalDebtExMortgage / 500)
     : 0;
+  const debtFreeMonths = amortMonths + (totalDebtExMortgage === 0 && maxIoMonths > 0 ? maxIoMonths : 0);
 
   return { actions, debtFreeMonths, projectedInterestSaved: round2(projectedInterestSaved) };
 }

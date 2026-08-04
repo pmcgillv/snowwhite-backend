@@ -7,6 +7,7 @@ import Budgets   from './pages/Budgets'
 import Actions   from './pages/Actions'
 import Cashflow  from './pages/Cashflow'
 import Reports   from './pages/Reports'
+import PayoffMetrics from './pages/PayoffMetrics'
 import Setup     from './pages/Setup'
 import Settings  from './pages/Settings'
 import Advisor   from './pages/Advisor'
@@ -25,6 +26,7 @@ export function AppRoutes() {
         <Route path="actions"  element={<Actions />} />
         <Route path="cashflow" element={<Cashflow />} />
         <Route path="reports"  element={<Reports />} />
+        <Route path="payoff"   element={<PayoffMetrics />} />
         <Route path="setup"    element={<Setup />} />
         <Route path="settings" element={<Settings />} />
         <Route path="advisor"  element={<Advisor />} />

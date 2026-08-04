@@ -8,6 +8,7 @@ const PRIMARY_TABS = [
   { to: '/app/actions', label: 'Action Plan' },
   { to: '/app/budgets', label: 'Budget' },
   { to: '/app/accounts', label: 'Accounts' },
+  { to: '/app/payoff', label: 'Payoff' },
   { to: '/app/reports', label: 'Reports' },
 ]
 

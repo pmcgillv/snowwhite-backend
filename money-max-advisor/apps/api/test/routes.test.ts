@@ -20,6 +20,40 @@ describe('API route smoke tests', () => {
     expect(body.accounts.length).toBeGreaterThan(0);
   });
 
+  it('POST /api/accounts creates a local account with interest-only period', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/accounts',
+      payload: {
+        kind: 'mortgage',
+        name: 'New Construction Mortgage',
+        institution: 'Demo Bank',
+        balance: 410000,
+        interestRateAPR: 6.25,
+        interestOnlyPeriod: {
+          active: true,
+          months: 36,
+          startDate: '2026-08-01',
+          endDate: '2029-08-01',
+        },
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = JSON.parse(res.body) as {
+      account: {
+        name: string;
+        type: string;
+        balance: number;
+        interestOnlyPeriod?: { active: boolean; months?: number };
+      };
+    };
+    expect(body.account.name).toBe('New Construction Mortgage');
+    expect(body.account.type).toBe('mortgage');
+    expect(body.account.balance).toBeLessThan(0);
+    expect(body.account.interestOnlyPeriod?.active).toBe(true);
+    expect(body.account.interestOnlyPeriod?.months).toBe(36);
+  });
+
   it('GET /api/dashboard returns summary fields', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/dashboard' });
     expect(res.statusCode).toBe(200);

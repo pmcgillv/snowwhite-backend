@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { api } from '../api/client'
 import { IconX } from './Icons'
+import type { InterestOnlyPeriod } from '../api/client'
 
 type AccountKind = 'bank' | 'creditor' | 'mortgage' | 'asset'
 
@@ -12,26 +14,60 @@ const KIND_LABELS: Record<AccountKind, string> = {
 
 interface AddAccountModalProps {
   onClose: () => void
+  onAdded?: () => void
 }
 
-export function AddAccountModal({ onClose }: AddAccountModalProps) {
+export function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
   const [kind, setKind] = useState<AccountKind>('bank')
   const [name, setName] = useState('')
   const [institution, setInstitution] = useState('')
   const [balance, setBalance] = useState('')
   const [rate, setRate] = useState('')
+  const [interestOnly, setInterestOnly] = useState(false)
+  const [interestOnlyMonths, setInterestOnlyMonths] = useState('12')
+  const [interestOnlyEndDate, setInterestOnlyEndDate] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(e: React.FormEvent) {
+  const showDebtFields = kind === 'creditor' || kind === 'mortgage'
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setToast(true)
-    setTimeout(() => {
-      setToast(false)
-      onClose()
-    }, 1800)
-  }
+    setError(null)
+    setSubmitting(true)
 
-  const showRate = kind === 'creditor' || kind === 'mortgage'
+    const interestOnlyPeriod: InterestOnlyPeriod | undefined =
+      showDebtFields && interestOnly
+        ? {
+            active: true,
+            months: interestOnlyMonths ? Number(interestOnlyMonths) : undefined,
+            endDate: interestOnlyEndDate || undefined,
+            startDate: new Date().toISOString().slice(0, 10),
+          }
+        : undefined
+
+    try {
+      await api.post('/api/accounts', {
+        kind,
+        name,
+        institution: institution || undefined,
+        balance: Number(balance),
+        interestRateAPR: rate ? Number(rate) : 0,
+        interestOnlyPeriod,
+      })
+      setToast(true)
+      onAdded?.()
+      setTimeout(() => {
+        setToast(false)
+        onClose()
+      }, 1400)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add account')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div
@@ -58,7 +94,10 @@ export function AddAccountModal({ onClose }: AddAccountModalProps) {
               role="tab"
               aria-selected={kind === k}
               className={`modal__tab${kind === k ? ' active' : ''}`}
-              onClick={() => setKind(k)}
+              onClick={() => {
+                setKind(k)
+                if (k === 'bank' || k === 'asset') setInterestOnly(false)
+              }}
             >
               {KIND_LABELS[k]}
             </button>
@@ -95,7 +134,7 @@ export function AddAccountModal({ onClose }: AddAccountModalProps) {
 
           <div className="form-group">
             <label className="form-label" htmlFor="acc-balance">
-              {kind === 'creditor' || kind === 'mortgage' ? 'Balance Owed ($)' : 'Current Balance ($)'}
+              {showDebtFields ? 'Balance Owed ($)' : 'Current Balance ($)'}
             </label>
             <input
               id="acc-balance"
@@ -109,37 +148,100 @@ export function AddAccountModal({ onClose }: AddAccountModalProps) {
             />
           </div>
 
-          {showRate && (
-            <div className="form-group">
-              <label className="form-label" htmlFor="acc-rate">
-                Interest Rate (APR %)
-              </label>
-              <input
-                id="acc-rate"
-                className="form-input"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                placeholder="e.g. 18.99"
-              />
-            </div>
+          {showDebtFields && (
+            <>
+              <div className="form-group">
+                <label className="form-label" htmlFor="acc-rate">
+                  Interest Rate (APR %)
+                </label>
+                <input
+                  id="acc-rate"
+                  className="form-input"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  placeholder="e.g. 18.99"
+                />
+              </div>
+
+              <div className="form-group form-group--check">
+                <label className="form-check" htmlFor="acc-interest-only">
+                  <input
+                    id="acc-interest-only"
+                    type="checkbox"
+                    checked={interestOnly}
+                    onChange={(e) => setInterestOnly(e.target.checked)}
+                  />
+                  <span>
+                    Interest-only period
+                    <span className="form-check__hint">
+                      Common on new mortgages / HELOCs — principal stays flat until this ends
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              {interestOnly && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="acc-io-months">
+                      Interest-only months
+                    </label>
+                    <input
+                      id="acc-io-months"
+                      className="form-input"
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={interestOnlyMonths}
+                      onChange={(e) => setInterestOnlyMonths(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="acc-io-end">
+                      Or end date
+                    </label>
+                    <input
+                      id="acc-io-end"
+                      className="form-input"
+                      type="date"
+                      value={interestOnlyEndDate}
+                      onChange={(e) => setInterestOnlyEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="modal__notice">
-            <strong>Demo only</strong> — no data is sent to any bank or third party.
+            <strong>Demo only</strong> — account is stored locally for planning. No bank
+            connection is made. Interest-only periods steer extra principal to other debts.
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            Add Account
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            disabled={submitting}
+          >
+            {submitting ? 'Adding…' : 'Add Account'}
           </button>
         </form>
 
         {toast && (
           <div className="toast" role="status">
-            Account added locally (demo mode)
+            Account added
+            {interestOnly ? ' with interest-only period' : ''}
           </div>
         )}
       </div>

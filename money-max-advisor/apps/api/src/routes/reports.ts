@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ReportSummary, WealthSnapshot } from '@money-max/shared';
-import { seedAccounts, seedIncomeStreams, seedBudgets } from '../data/seed.js';
+import { seedIncomeStreams, seedBudgets } from '../data/seed.js';
+import { getAccounts } from './accounts.js';
 
 export async function reportRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/reports/wealth', async (_req, reply) => {
@@ -10,7 +11,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
 }
 
 function buildWealthReport(): ReportSummary {
-  const accounts = seedAccounts;
+  const accounts = getAccounts();
 
   const totalAssets = accounts
     .filter((a) => a.balance > 0)
