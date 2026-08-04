@@ -35,10 +35,8 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
           <div className="reconnect-banner__text">
             <div className="reconnect-banner__title">API Unreachable</div>
             <div className="reconnect-banner__sub">
-              Could not connect to the Ledgerline API. Make sure the server is running at{' '}
-              <code style={{ fontFamily: 'monospace', fontSize: '0.8em' }}>
-                {(import.meta.env?.VITE_API_URL as string | undefined) ?? 'http://localhost:4000'}
-              </code>
+              Could not connect to the Ledgerline API. Refresh the page, or confirm the API
+              (`npm run dev:api`) is running. Preview uses a same-origin proxy to the API.
             </div>
           </div>
         </div>

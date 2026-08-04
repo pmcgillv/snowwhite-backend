@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react'
 import { IconSend } from '../components/Icons'
 import type { AdvisorMessage } from '../api/client'
 
-const BASE_URL = (import.meta.env?.VITE_API_URL as string | undefined) ?? 'http://localhost:4000'
+const BASE_URL = (import.meta.env?.VITE_API_URL as string | undefined) ?? ''
 
 const STARTERS = [
   'How can I pay off my credit card faster?',

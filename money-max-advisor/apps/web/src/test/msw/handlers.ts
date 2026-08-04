@@ -8,7 +8,7 @@ import type {
   WealthReport,
 } from '../../api/client'
 
-const BASE = 'http://localhost:4000'
+const BASE = ''
 
 export const mockDashboard: DashboardSummary = {
   debtFreeDate: '2027-06-01',

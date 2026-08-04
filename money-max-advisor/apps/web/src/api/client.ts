@@ -1,4 +1,6 @@
-const BASE_URL = (import.meta.env?.VITE_API_URL as string | undefined) ?? 'http://localhost:4000'
+// Default to same-origin so Cursor VM / remote previews work via the Vite proxy.
+// Override with VITE_API_URL only when the API is on a different host.
+const BASE_URL = (import.meta.env?.VITE_API_URL as string | undefined) ?? ''
 
 export class ApiError extends Error {
   constructor(
