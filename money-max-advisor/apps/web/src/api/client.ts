@@ -13,12 +13,26 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers)
+  const hasBody = init?.body != null && init.body !== ''
+  // Fastify rejects Content-Type: application/json with an empty body (400).
+  if (hasBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers,
   })
   if (!res.ok) {
-    throw new ApiError(res.status, `API error ${res.status}: ${res.statusText}`)
+    let detail = res.statusText
+    try {
+      const errBody = (await res.json()) as { message?: string; error?: string }
+      detail = errBody.message ?? errBody.error ?? detail
+    } catch {
+      // keep statusText
+    }
+    throw new ApiError(res.status, `API error ${res.status}: ${detail}`)
   }
   return res.json() as Promise<T>
 }
@@ -26,12 +40,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'POST',
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }),
+    request<T>(
+      path,
+      body === undefined
+        ? { method: 'POST' }
+        : {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' },
+          },
+    ),
   patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+    request<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
