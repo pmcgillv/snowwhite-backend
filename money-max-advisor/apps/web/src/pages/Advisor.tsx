@@ -42,11 +42,11 @@ export default function Advisor() {
       const res = await fetch(`${BASE_URL}/api/advisor/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ message: text.trim() }),
       })
       if (!res.ok) throw new Error(`Server error ${res.status}`)
-      const data = (await res.json()) as { message: string }
-      setMessages(m => [...m, { role: 'assistant', content: data.message }])
+      const data = (await res.json()) as { reply: string }
+      setMessages(m => [...m, { role: 'assistant', content: data.reply }])
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       const isNetwork = msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')

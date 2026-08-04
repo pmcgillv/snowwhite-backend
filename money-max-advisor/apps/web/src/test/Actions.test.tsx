@@ -16,7 +16,7 @@ describe('Action Plan page', () => {
       expect(screen.queryByText(/loading action plan/i)).not.toBeInTheDocument()
     }, { timeout: 5000 })
 
-    const approveBtns = await screen.findAllByRole('button', { name: /approve action/i })
+    const approveBtns = await screen.findAllByRole('button', { name: /^approve$/i })
     expect(approveBtns.length).toBeGreaterThan(0)
   })
 
@@ -28,7 +28,7 @@ describe('Action Plan page', () => {
     )
 
     await waitFor(() => {
-      const dismissBtns = screen.queryAllByRole('button', { name: /dismiss action/i })
+      const dismissBtns = screen.queryAllByRole('button', { name: /^dismiss$/i })
       expect(dismissBtns.length).toBeGreaterThan(0)
     }, { timeout: 5000 })
   })
@@ -53,8 +53,8 @@ describe('Action Plan page', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /^pending$/i })).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: /^all$/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /pending/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /^all/i })).toBeInTheDocument()
     }, { timeout: 5000 })
   })
 
@@ -71,7 +71,7 @@ describe('Action Plan page', () => {
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument()
     }, { timeout: 5000 })
 
-    const pendingTab = await screen.findByRole('tab', { name: /^pending$/i })
+    const pendingTab = await screen.findByRole('tab', { name: /pending/i })
     await user.click(pendingTab)
     expect(pendingTab).toHaveAttribute('aria-selected', 'true')
   })

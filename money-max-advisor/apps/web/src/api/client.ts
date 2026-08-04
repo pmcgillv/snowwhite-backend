@@ -25,73 +25,110 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  post: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: 'POST',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
-/* ── Types ──────────────────────────────────────────────── */
+/* ── Types aligned with apps/api + packages/shared ───────── */
+
+export type AccountType =
+  | 'checking'
+  | 'savings'
+  | 'credit'
+  | 'loan'
+  | 'mortgage'
+  | 'heloc'
+  | 'investment'
 
 export interface Account {
   id: string
   name: string
-  institution: string
-  type: 'checking' | 'savings' | 'credit_card' | 'line_of_credit' | 'loan' | 'investment'
+  type: AccountType
   balance: number
-  limit?: number
-  interestRate?: number
-  connected: boolean
+  interestRateAPR: number
+  institution: string
+  creditLimit?: number
+  minimumPayment?: number
+  dueDay?: number
 }
 
 export interface DashboardSummary {
   debtFreeDate: string
-  interestSaved: number
+  totalDebt: number
+  interestSavedProjected: number
   discretionaryIncome: number
-  emergencyFundMonths: number
-  nextActions: Action[]
+  emergencyFund: number
+  netWorth: number
+  monthlyIncome: number
+  monthlyExpenses: number
 }
 
-export interface Action {
+export type ActionType = 'transfer' | 'debt_payment' | 'sweep' | 'reserve'
+export type ActionStatus = 'pending' | 'approved' | 'executed' | 'dismissed'
+
+export interface ActionItem {
   id: string
-  title: string
-  description: string
+  type: ActionType
+  fromAccountId: string
+  toAccountId: string
   amount: number
-  priority: 'high' | 'medium' | 'low'
-  type: 'transfer' | 'payment' | 'rebalance' | 'review'
-  status: 'pending' | 'approved' | 'executed' | 'dismissed'
-  dueDate?: string
+  suggestedDate: string
+  reason: string
+  interestImpact: number
+  status: ActionStatus
+  priority: number
 }
 
 export interface Budget {
   id: string
   name: string
   category: string
-  allocated: number
-  spent: number
-  type: 'expense' | 'income'
+  allocatedMonthly: number
+  spentThisMonth: number
 }
 
-export interface CashflowEntry {
-  month: string
-  income: number
-  expenses: number
-  net: number
+export interface Bill {
+  id: string
+  name: string
+  amount: number
+  frequency: string
+  dueDay: number
+  accountId: string
+  category: string
+  autopay: boolean
 }
 
-export interface WealthReport {
-  month: string
+export interface CashflowPoint {
+  date: string
+  inflow: number
+  outflow: number
+  balance: number
+  label?: string
+}
+
+export interface WealthSnapshot {
+  date: string
+  assets: number
+  liabilities: number
   netWorth: number
-  totalDebt: number
-  interestSaved: number
+}
+
+export interface ReportSummary {
+  period: string
+  totalInterestPaid: number
+  totalPrincipalPaid: number
+  wealthTrajectory: WealthSnapshot[]
+  savingsRate: number
+  debtPayoffProgress: number
 }
 
 export interface AdvisorMessage {
   role: 'user' | 'assistant'
   content: string
-}
-
-export interface AdvisorChatResponse {
-  message: string
 }
