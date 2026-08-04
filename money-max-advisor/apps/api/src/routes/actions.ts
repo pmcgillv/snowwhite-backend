@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ActionItem, ActionStatus } from '@money-max/shared';
 import { seedAccounts } from '../data/seed.js';
 import { generateActionPlan } from '../engine/actionPlan.js';
@@ -25,6 +25,17 @@ function ensureStore(): Map<string, ActionItem> {
 export function resetActionStore(): void {
   actionStore.clear();
   storeInitialised = false;
+}
+
+function setStatus(id: string, status: ActionStatus, reply: FastifyReply) {
+  const store = ensureStore();
+  const action = store.get(id);
+  if (!action) {
+    return reply.status(404).send({ error: 'Action not found', id });
+  }
+  const updated: ActionItem = { ...action, status };
+  store.set(id, updated);
+  return reply.send(updated);
 }
 
 export async function actionRoutes(app: FastifyInstance): Promise<void> {
@@ -58,19 +69,4 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       return setStatus(req.params.id, 'dismissed', reply);
     },
   );
-}
-
-function setStatus(
-  id: string,
-  status: ActionStatus,
-  reply: Parameters<Parameters<FastifyInstance['post']>[1]>[1],
-) {
-  const store = ensureStore();
-  const action = store.get(id);
-  if (!action) {
-    return reply.status(404).send({ error: 'Action not found', id });
-  }
-  const updated: ActionItem = { ...action, status };
-  store.set(id, updated);
-  return reply.send(updated);
 }

@@ -10,8 +10,8 @@
     "dev": "npm run dev:api & npm run dev:web",
     "dev:api": "npm run dev -w @money-max/api",
     "dev:web": "npm run dev -w @mma/web",
-    "build": "npm run build -w @money-max/api && npm run build -w @mma/web",
-    "test": "npm run test -w @money-max/api && npm run test -w @mma/web",
+    "build": "npm run build -w @money-max/shared && npm run build -w @money-max/api && npm run build -w @mma/web",
+    "test": "npm run build -w @money-max/shared && npm run test -w @money-max/api && npm run test -w @mma/web",
     "test:api": "npm run test -w @money-max/api",
     "test:web": "npm run test -w @mma/web"
   }

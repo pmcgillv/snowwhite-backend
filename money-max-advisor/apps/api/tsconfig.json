@@ -2,10 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
-    "paths": {
-      "@money-max/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "rootDir": "./src"
   },
-  "include": ["src", "test"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "test"],
+  "references": [{ "path": "../../packages/shared" }]
 }
