@@ -35,20 +35,27 @@ export function useFetch<T>(path: string) {
     error: null,
   })
 
-  const load = useCallback(async () => {
-    dispatch({ type: 'LOADING' })
-    try {
-      const data = await api.get<T>(path)
-      dispatch({ type: 'SUCCESS', payload: data })
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error'
-      dispatch({ type: 'ERROR', payload: msg })
-    }
-  }, [path])
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) {
+        dispatch({ type: 'LOADING' })
+      }
+      try {
+        const data = await api.get<T>(path)
+        dispatch({ type: 'SUCCESS', payload: data })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        dispatch({ type: 'ERROR', payload: msg })
+      }
+    },
+    [path],
+  )
 
   useEffect(() => {
     void load()
   }, [load])
 
-  return { ...state, refetch: load }
+  const refetch = useCallback(() => load({ silent: true }), [load])
+
+  return { ...state, refetch, reload: load }
 }

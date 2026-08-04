@@ -16,7 +16,7 @@ describe('Action Plan page', () => {
       expect(screen.queryByText(/loading action plan/i)).not.toBeInTheDocument()
     }, { timeout: 5000 })
 
-    const approveBtns = await screen.findAllByRole('button', { name: /^approve$/i })
+    const approveBtns = await screen.findAllByRole('button', { name: /approve/i })
     expect(approveBtns.length).toBeGreaterThan(0)
   })
 
@@ -31,6 +31,22 @@ describe('Action Plan page', () => {
       const dismissBtns = screen.queryAllByRole('button', { name: /^dismiss$/i })
       expect(dismissBtns.length).toBeGreaterThan(0)
     }, { timeout: 5000 })
+  })
+
+  it('approving an action opens the payment page', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/app/actions']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    const approveBtns = await screen.findAllByRole('button', { name: /approve/i })
+    await user.click(approveBtns[0]!)
+
+    expect(await screen.findByRole('heading', { name: /^Payment$/i })).toBeInTheDocument()
+    expect(screen.getByText(/Amount to pay/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mark executed/i })).toBeInTheDocument()
   })
 
   it('shows the safety notice about money never moving automatically', async () => {

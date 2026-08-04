@@ -103,6 +103,12 @@ export const mockActions: ActionItem[] = [
   },
 ]
 
+export function resetMockActions() {
+  for (const a of mockActions) {
+    a.status = 'pending'
+  }
+}
+
 export const mockBudgets: Budget[] = [
   {
     id: 'b1',
@@ -220,6 +226,11 @@ export const handlers = [
     )
   }),
   http.get(`${BASE}/api/actions`, () => HttpResponse.json({ actions: mockActions })),
+  http.get(`${BASE}/api/actions/:id`, ({ params }) => {
+    const action = mockActions.find((a) => a.id === params['id'])
+    if (!action) return HttpResponse.json({ error: 'Action not found' }, { status: 404 })
+    return HttpResponse.json({ action })
+  }),
   http.get(`${BASE}/api/budgets`, () =>
     HttpResponse.json({ budgets: mockBudgets, bills: mockBills, incomes: mockIncomes }),
   ),
@@ -229,15 +240,18 @@ export const handlers = [
   http.get(`${BASE}/api/reports/wealth`, () => HttpResponse.json(mockReport)),
   http.post(`${BASE}/api/actions/:id/approve`, ({ params }) => {
     const action = mockActions.find((a) => a.id === params['id'])
-    return HttpResponse.json(action ? { ...action, status: 'approved' } : { status: 'approved' })
+    if (action) action.status = 'approved'
+    return HttpResponse.json(action ?? { status: 'approved' })
   }),
   http.post(`${BASE}/api/actions/:id/execute`, ({ params }) => {
     const action = mockActions.find((a) => a.id === params['id'])
-    return HttpResponse.json(action ? { ...action, status: 'executed' } : { status: 'executed' })
+    if (action) action.status = 'executed'
+    return HttpResponse.json(action ?? { status: 'executed' })
   }),
   http.post(`${BASE}/api/actions/:id/dismiss`, ({ params }) => {
     const action = mockActions.find((a) => a.id === params['id'])
-    return HttpResponse.json(action ? { ...action, status: 'dismissed' } : { status: 'dismissed' })
+    if (action) action.status = 'dismissed'
+    return HttpResponse.json(action ?? { status: 'dismissed' })
   }),
   http.post(`${BASE}/api/advisor/chat`, () =>
     HttpResponse.json({ reply: 'Demo advisor reply' }),

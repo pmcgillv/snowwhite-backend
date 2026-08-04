@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useFetch } from '../hooks/useFetch'
 import { LoadingState, ErrorState, EmptyState } from '../components/LoadingState'
 import { IconShield } from '../components/Icons'
@@ -35,6 +36,23 @@ function actionTitle(action: ActionItem): string {
   }
 }
 
+function statusBadgeClass(status: ActionStatus): string {
+  switch (status) {
+    case 'pending':
+      return 'badge badge-warning'
+    case 'approved':
+      return 'badge badge-info'
+    case 'executed':
+      return 'badge badge-teal'
+    case 'dismissed':
+      return 'badge badge-muted'
+    default: {
+      const _exhaustive: never = status
+      return String(_exhaustive)
+    }
+  }
+}
+
 type Filter = 'all' | ActionStatus
 
 export default function Actions() {
@@ -42,10 +60,27 @@ export default function Actions() {
   const accountsRes = useFetch<{ accounts: Account[] }>('/api/accounts')
   const [filter, setFilter] = useState<Filter>('all')
   const [busy, setBusy] = useState<Record<string, boolean>>({})
+  const [localActions, setLocalActions] = useState<ActionItem[] | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [mutateError, setMutateError] = useState<string | null>(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (data?.actions) setLocalActions(data.actions)
+  }, [data])
+
+  const patchLocal = useCallback((id: string, status: ActionStatus) => {
+    setLocalActions((prev) =>
+      prev ? prev.map((a) => (a.id === id ? { ...a, status } : a)) : prev,
+    )
+  }, [])
 
   const mutate = useCallback(
-    async (id: string, next: ActionStatus) => {
+    async (id: string, next: ActionStatus, opts?: { openPay?: boolean }) => {
       setBusy((p) => ({ ...p, [id]: true }))
+      setMutateError(null)
+      // Optimistic UI so Approve never looks like a no-op
+      patchLocal(id, next)
       try {
         const path =
           next === 'approved'
@@ -55,22 +90,38 @@ export default function Actions() {
               : `/api/actions/${id}/dismiss`
         await api.post(path)
         await refetch()
-      } catch {
+        if (next === 'approved') {
+          setToast('Approved — open the payment page to complete it at your bank')
+          if (opts?.openPay !== false) {
+            navigate(`/app/actions/${id}/pay`)
+            return
+          }
+        } else if (next === 'executed') {
+          setToast('Marked executed')
+        } else {
+          setToast('Dismissed')
+        }
+        window.setTimeout(() => setToast(null), 2800)
+      } catch (err) {
+        // Roll back optimistic update from server truth
         await refetch()
+        setMutateError(err instanceof Error ? err.message : 'Could not update action')
       } finally {
         setBusy((p) => ({ ...p, [id]: false }))
       }
     },
-    [refetch],
+    [refetch, patchLocal, navigate],
   )
 
-  if (loading) return <LoadingState text="Loading action plan…" />
-  if (error || !data) return <ErrorState message={error ?? 'No data'} onRetry={refetch} />
+  if (loading && !localActions) return <LoadingState text="Loading action plan…" />
+  if ((error || !data) && !localActions) {
+    return <ErrorState message={error ?? 'No data'} onRetry={refetch} />
+  }
 
   const accounts = accountsRes.data?.accounts ?? []
   const accountById = (id: string) => accounts.find((a) => a.id === id)?.name ?? id
 
-  const actions = data.actions
+  const actions = localActions ?? data?.actions ?? []
   const filtered = actions.filter((a) => filter === 'all' || a.status === filter)
 
   const counts = {
@@ -104,11 +155,16 @@ export default function Actions() {
           <IconShield size={16} />
         </span>
         <div className="readonly-notice__text">
-          <strong>Your money never moves automatically.</strong> Ledgerline recommends actions
-          only. Approve means you agree with the plan; Mark Executed means you already paid it
-          yourself at the bank.
+          <strong>Your money never moves automatically.</strong> Approve opens a payment page
+          with the amount and accounts so you can pay at your bank, then Mark Executed.
         </div>
       </div>
+
+      {mutateError && (
+        <p className="form-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>
+          {mutateError}
+        </p>
+      )}
 
       {/* Filter tabs */}
       <div
@@ -186,17 +242,7 @@ export default function Actions() {
                         {action.interestImpact > 0 ? `−${fmt(action.interestImpact)}` : '—'}
                       </td>
                       <td>
-                        <span
-                          className={`badge badge-${
-                            action.status === 'pending'
-                              ? 'warning'
-                              : action.status === 'executed'
-                                ? 'teal'
-                                : 'muted'
-                          }`}
-                        >
-                          {action.status}
-                        </span>
+                        <span className={statusBadgeClass(action.status)}>{action.status}</span>
                       </td>
                       <td>
                         <div className="action-table__controls">
@@ -207,7 +253,7 @@ export default function Actions() {
                                 onClick={() => void mutate(action.id, 'approved')}
                                 disabled={!!busy[action.id]}
                               >
-                                Approve
+                                Approve &amp; Pay
                               </button>
                               <button
                                 className="btn btn-ghost btn-sm"
@@ -220,9 +266,15 @@ export default function Actions() {
                           )}
                           {action.status === 'approved' && (
                             <>
-                              <button
+                              <Link
+                                to={`/app/actions/${action.id}/pay`}
                                 className="btn btn-primary btn-sm"
-                                onClick={() => void mutate(action.id, 'executed')}
+                              >
+                                Open Payment
+                              </Link>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => void mutate(action.id, 'executed', { openPay: false })}
                                 disabled={!!busy[action.id]}
                               >
                                 Mark Executed
@@ -252,11 +304,7 @@ export default function Actions() {
           </div>
 
           {/* Card view (visible on mobile) */}
-          <div
-            className="action-cards"
-            role="list"
-            aria-label="Action items"
-          >
+          <div className="action-cards" role="list" aria-label="Action items">
             {filtered.map((action, i) => {
               const band = priorityBand(action.priority)
               const title = actionTitle(action)
@@ -278,17 +326,7 @@ export default function Actions() {
                       <div className="action-item__title">{title}</div>
                       <div className="action-item__desc">{action.reason}</div>
                       <div className="action-item__meta">
-                        <span
-                          className={`badge badge-${
-                            action.status === 'pending'
-                              ? 'warning'
-                              : action.status === 'executed'
-                                ? 'teal'
-                                : 'muted'
-                          }`}
-                        >
-                          {action.status}
-                        </span>
+                        <span className={statusBadgeClass(action.status)}>{action.status}</span>
                         <span>{action.type}</span>
                         <span>Suggested {action.suggestedDate}</span>
                         <span>Interest impact {fmt(action.interestImpact)}</span>
@@ -305,7 +343,7 @@ export default function Actions() {
                           onClick={() => void mutate(action.id, 'approved')}
                           disabled={!!busy[action.id]}
                         >
-                          Approve
+                          Approve &amp; Pay
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
@@ -318,9 +356,15 @@ export default function Actions() {
                     )}
                     {action.status === 'approved' && (
                       <>
-                        <button
+                        <Link
+                          to={`/app/actions/${action.id}/pay`}
                           className="btn btn-primary btn-sm"
-                          onClick={() => void mutate(action.id, 'executed')}
+                        >
+                          Open Payment
+                        </Link>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => void mutate(action.id, 'executed', { openPay: false })}
                           disabled={!!busy[action.id]}
                         >
                           Mark Executed
@@ -346,6 +390,12 @@ export default function Actions() {
             })}
           </div>
         </>
+      )}
+
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
       )}
     </div>
   )

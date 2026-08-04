@@ -47,6 +47,18 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ actions });
   });
 
+  app.get<{ Params: { id: string } }>(
+    '/api/actions/:id',
+    async (req, reply) => {
+      const store = ensureStore();
+      const action = store.get(req.params.id);
+      if (!action) {
+        return reply.status(404).send({ error: 'Action not found', id: req.params.id });
+      }
+      return reply.send({ action });
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     '/api/actions/:id/approve',
     async (req, reply) => {

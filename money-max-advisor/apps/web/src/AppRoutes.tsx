@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Accounts  from './pages/Accounts'
 import Budgets   from './pages/Budgets'
 import Actions   from './pages/Actions'
+import ActionPay from './pages/ActionPay'
 import Cashflow  from './pages/Cashflow'
 import Reports   from './pages/Reports'
 import PayoffMetrics from './pages/PayoffMetrics'
@@ -24,6 +25,7 @@ export function AppRoutes() {
         <Route path="accounts" element={<Accounts />} />
         <Route path="budgets"  element={<Budgets />} />
         <Route path="actions"  element={<Actions />} />
+        <Route path="actions/:id/pay" element={<ActionPay />} />
         <Route path="cashflow" element={<Cashflow />} />
         <Route path="reports"  element={<Reports />} />
         <Route path="payoff"   element={<PayoffMetrics />} />

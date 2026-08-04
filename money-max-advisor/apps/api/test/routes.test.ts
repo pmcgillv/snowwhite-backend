@@ -97,6 +97,18 @@ describe('API route smoke tests', () => {
     expect(updated.status).toBe('approved');
   });
 
+  it('GET /api/actions/:id returns a single action', async () => {
+    const listRes = await app.inject({ method: 'GET', url: '/api/actions' });
+    const { actions } = JSON.parse(listRes.body) as { actions: Array<{ id: string }> };
+    const first = actions[0];
+    expect(first).toBeDefined();
+
+    const res = await app.inject({ method: 'GET', url: `/api/actions/${first!.id}` });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body) as { action: { id: string } };
+    expect(body.action.id).toBe(first!.id);
+  });
+
   it('POST /api/actions/:id/execute marks action as executed', async () => {
     const listRes = await app.inject({ method: 'GET', url: '/api/actions' });
     const { actions } = JSON.parse(listRes.body) as { actions: Array<{ id: string; status: string }> };

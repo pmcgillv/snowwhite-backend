@@ -228,6 +228,7 @@ img, svg { display: block; max-width: 100%; }
 
 .badge-teal    { background: var(--teal-10); color: var(--teal); }
 .badge-warning { background: rgba(201, 146, 42, 0.15); color: #D4A84B; }
+.badge-info    { background: rgba(74, 144, 217, 0.15); color: #6BA3D6; }
 .badge-muted   { background: var(--sand-10); color: var(--sand-60); }
 
 /* ── Stat card ──────────────────────────────────────────── */
