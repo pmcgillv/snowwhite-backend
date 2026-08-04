@@ -3,15 +3,14 @@ import { useFetch } from '../hooks/useFetch'
 import { LoadingState, ErrorState, EmptyState } from '../components/LoadingState'
 import { IconShield } from '../components/Icons'
 import { api } from '../api/client'
-import type { ActionItem, ActionStatus } from '../api/client'
+import type { Account, ActionItem, ActionStatus } from '../api/client'
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', {
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(n)
-}
 
 function priorityBand(priority: number): 'high' | 'medium' | 'low' {
   if (priority <= 3) return 'high'
@@ -40,6 +39,7 @@ type Filter = 'all' | ActionStatus
 
 export default function Actions() {
   const { data, loading, error, refetch } = useFetch<{ actions: ActionItem[] }>('/api/actions')
+  const accountsRes = useFetch<{ accounts: Account[] }>('/api/accounts')
   const [filter, setFilter] = useState<Filter>('all')
   const [busy, setBusy] = useState<Record<string, boolean>>({})
 
@@ -67,6 +67,9 @@ export default function Actions() {
   if (loading) return <LoadingState text="Loading action plan…" />
   if (error || !data) return <ErrorState message={error ?? 'No data'} onRetry={refetch} />
 
+  const accounts = accountsRes.data?.accounts ?? []
+  const accountById = (id: string) => accounts.find((a) => a.id === id)?.name ?? id
+
   const actions = data.actions
   const filtered = actions.filter((a) => filter === 'all' || a.status === filter)
 
@@ -88,7 +91,9 @@ export default function Actions() {
   return (
     <div className="app-page page-enter" role="main" aria-labelledby="actions-title">
       <header className="app-page__header">
-        <h1 className="app-page__title" id="actions-title">Action Plan</h1>
+        <h1 className="app-page__title" id="actions-title">
+          Action Plan
+        </h1>
         <p className="app-page__subtitle">
           Optimal payment timing to cut interest volume — not just due dates.
         </p>
@@ -99,12 +104,13 @@ export default function Actions() {
           <IconShield size={16} />
         </span>
         <div className="readonly-notice__text">
-          <strong>Your money never moves automatically.</strong> Ledgerline recommends
-          actions only. Approve means you agree with the plan; Mark Executed means you
-          already paid it yourself at the bank.
+          <strong>Your money never moves automatically.</strong> Ledgerline recommends actions
+          only. Approve means you agree with the plan; Mark Executed means you already paid it
+          yourself at the bank.
         </div>
       </div>
 
+      {/* Filter tabs */}
       <div
         role="tablist"
         aria-label="Filter actions"
@@ -139,95 +145,207 @@ export default function Actions() {
       {filtered.length === 0 ? (
         <EmptyState text={`No ${filter === 'all' ? '' : filter} actions.`} />
       ) : (
-        <div
-          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}
-          role="list"
-          aria-label="Action items"
-        >
-          {filtered.map((action, i) => {
-            const band = priorityBand(action.priority)
-            const title = actionTitle(action)
-            return (
-              <article
-                key={action.id}
-                className="action-item stagger-item"
-                style={{ animationDelay: `${i * 60}ms` }}
-                role="listitem"
-                aria-label={`${title} — ${action.status}`}
-                aria-busy={!!busy[action.id]}
-              >
-                <div className="action-item__header">
-                  <div
-                    className={`action-item__priority action-item__priority--${band}`}
-                    aria-label={`${band} priority`}
-                  />
-                  <div className="action-item__body">
-                    <div className="action-item__title">{title}</div>
-                    <div className="action-item__desc">{action.reason}</div>
-                    <div className="action-item__meta">
-                      <span
-                        className={`badge badge-${
-                          action.status === 'pending'
-                            ? 'warning'
-                            : action.status === 'executed'
-                              ? 'teal'
-                              : 'muted'
-                        }`}
-                      >
-                        {action.status}
-                      </span>
-                      <span>{action.type}</span>
-                      <span>Suggested {action.suggestedDate}</span>
-                      <span>Interest impact {fmt(action.interestImpact)}</span>
-                    </div>
-                  </div>
-                  <div className="action-item__amount">{fmt(action.amount)}</div>
-                </div>
+        <>
+          {/* Table view */}
+          <div className="action-table-wrap">
+            <table className="action-table" aria-label="Action items">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Type</th>
+                  <th className="text-right">Amount</th>
+                  <th className="text-right">Interest Impact</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((action) => {
+                  const band = priorityBand(action.priority)
+                  const title = actionTitle(action)
+                  return (
+                    <tr
+                      key={action.id}
+                      aria-label={`${title} — ${action.status}`}
+                      aria-busy={!!busy[action.id]}
+                    >
+                      <td className="action-table__date">{action.suggestedDate}</td>
+                      <td>{accountById(action.fromAccountId)}</td>
+                      <td>{accountById(action.toAccountId)}</td>
+                      <td>
+                        <span
+                          className={`action-table__dot action-table__dot--${band}`}
+                          aria-label={`${band} priority`}
+                        />
+                        {title}
+                      </td>
+                      <td className="text-right action-table__amount">{fmt(action.amount)}</td>
+                      <td className="text-right action-table__impact">
+                        {action.interestImpact > 0 ? `−${fmt(action.interestImpact)}` : '—'}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge badge-${
+                            action.status === 'pending'
+                              ? 'warning'
+                              : action.status === 'executed'
+                                ? 'teal'
+                                : 'muted'
+                          }`}
+                        >
+                          {action.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-table__controls">
+                          {action.status === 'pending' && (
+                            <>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => void mutate(action.id, 'approved')}
+                                disabled={!!busy[action.id]}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => void mutate(action.id, 'dismissed')}
+                                disabled={!!busy[action.id]}
+                              >
+                                Dismiss
+                              </button>
+                            </>
+                          )}
+                          {action.status === 'approved' && (
+                            <>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => void mutate(action.id, 'executed')}
+                                disabled={!!busy[action.id]}
+                              >
+                                Mark Executed
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => void mutate(action.id, 'dismissed')}
+                                disabled={!!busy[action.id]}
+                              >
+                                Dismiss
+                              </button>
+                            </>
+                          )}
+                          {action.status === 'executed' && (
+                            <span className="badge badge-teal">Completed</span>
+                          )}
+                          {action.status === 'dismissed' && (
+                            <span className="badge badge-muted">Dismissed</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                <div className="action-item__controls">
-                  {action.status === 'pending' && (
-                    <>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => void mutate(action.id, 'approved')}
-                        disabled={!!busy[action.id]}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => void mutate(action.id, 'dismissed')}
-                        disabled={!!busy[action.id]}
-                      >
-                        Dismiss
-                      </button>
-                    </>
-                  )}
-                  {action.status === 'approved' && (
-                    <>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => void mutate(action.id, 'executed')}
-                        disabled={!!busy[action.id]}
-                      >
-                        Mark Executed
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => void mutate(action.id, 'dismissed')}
-                        disabled={!!busy[action.id]}
-                      >
-                        Dismiss
-                      </button>
-                    </>
-                  )}
-                  {action.status === 'executed' && <span className="badge badge-teal">Completed</span>}
-                  {action.status === 'dismissed' && <span className="badge badge-muted">Dismissed</span>}
-                </div>
-              </article>
-            )
-          })}
-        </div>
+          {/* Card view (visible on mobile) */}
+          <div
+            className="action-cards"
+            role="list"
+            aria-label="Action items"
+          >
+            {filtered.map((action, i) => {
+              const band = priorityBand(action.priority)
+              const title = actionTitle(action)
+              return (
+                <article
+                  key={action.id}
+                  className="action-item stagger-item"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                  role="listitem"
+                  aria-label={`${title} — ${action.status}`}
+                  aria-busy={!!busy[action.id]}
+                >
+                  <div className="action-item__header">
+                    <div
+                      className={`action-item__priority action-item__priority--${band}`}
+                      aria-label={`${band} priority`}
+                    />
+                    <div className="action-item__body">
+                      <div className="action-item__title">{title}</div>
+                      <div className="action-item__desc">{action.reason}</div>
+                      <div className="action-item__meta">
+                        <span
+                          className={`badge badge-${
+                            action.status === 'pending'
+                              ? 'warning'
+                              : action.status === 'executed'
+                                ? 'teal'
+                                : 'muted'
+                          }`}
+                        >
+                          {action.status}
+                        </span>
+                        <span>{action.type}</span>
+                        <span>Suggested {action.suggestedDate}</span>
+                        <span>Interest impact {fmt(action.interestImpact)}</span>
+                      </div>
+                    </div>
+                    <div className="action-item__amount">{fmt(action.amount)}</div>
+                  </div>
+
+                  <div className="action-item__controls">
+                    {action.status === 'pending' && (
+                      <>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => void mutate(action.id, 'approved')}
+                          disabled={!!busy[action.id]}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => void mutate(action.id, 'dismissed')}
+                          disabled={!!busy[action.id]}
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    )}
+                    {action.status === 'approved' && (
+                      <>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => void mutate(action.id, 'executed')}
+                          disabled={!!busy[action.id]}
+                        >
+                          Mark Executed
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => void mutate(action.id, 'dismissed')}
+                          disabled={!!busy[action.id]}
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    )}
+                    {action.status === 'executed' && (
+                      <span className="badge badge-teal">Completed</span>
+                    )}
+                    {action.status === 'dismissed' && (
+                      <span className="badge badge-muted">Dismissed</span>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

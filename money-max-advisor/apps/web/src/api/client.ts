@@ -62,11 +62,20 @@ export interface DashboardSummary {
   debtFreeDate: string
   totalDebt: number
   interestSavedProjected: number
+  interestSavedActual?: number
   discretionaryIncome: number
   emergencyFund: number
   netWorth: number
   monthlyIncome: number
   monthlyExpenses: number
+}
+
+export interface IncomeItem {
+  id: string
+  name: string
+  frequency: 'weekly' | 'biweekly' | 'monthly' | 'bimonthly'
+  expectedMonthly: number
+  receivedThisMonth: number
 }
 
 export type ActionType = 'transfer' | 'debt_payment' | 'sweep' | 'reserve'

@@ -1,21 +1,18 @@
 import { Link } from 'react-router-dom'
 import { useFetch } from '../hooks/useFetch'
 import { LoadingState, ErrorState } from '../components/LoadingState'
+import { IconShield, IconArrowRight } from '../components/Icons'
 import type { ActionItem, DashboardSummary } from '../api/client'
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', {
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(n)
-}
 
-function fmtDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long' }).format(
-    new Date(iso),
-  )
-}
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long' }).format(new Date(iso))
 
 function priorityBand(priority: number): 'high' | 'medium' | 'low' {
   if (priority <= 3) return 'high'
@@ -55,53 +52,98 @@ export default function Dashboard() {
   const nextActions = (actionsRes.data?.actions ?? [])
     .filter((a) => a.status === 'pending')
     .slice(0, 4)
-  const emergencyMonths =
-    data.monthlyExpenses > 0 ? data.emergencyFund / data.monthlyExpenses : 0
+  const emergencyMonths = data.monthlyExpenses > 0 ? data.emergencyFund / data.monthlyExpenses : 0
 
   return (
     <div className="app-page page-enter" role="main" aria-labelledby="dash-title">
-      <header className="app-page__header">
-        <h1 className="app-page__title" id="dash-title">Dashboard</h1>
-        <p className="app-page__subtitle">Your financial snapshot at a glance.</p>
+      {/* Hero row */}
+      <header className="app-page__header dash-hero">
+        <div className="dash-hero__main">
+          <div className="dash-hero__eyebrow">Projected Debt-Free Date</div>
+          <h1 className="dash-hero__date debt-pulse display" id="dash-title">
+            {fmtDate(data.debtFreeDate)}
+          </h1>
+          <p className="dash-hero__sub">
+            Net Worth{' '}
+            <span className={data.netWorth >= 0 ? 'text-teal' : 'text-muted'}>
+              {fmt(data.netWorth)}
+            </span>{' '}
+            · Total Debt {fmt(data.totalDebt)}
+          </p>
+        </div>
+        <div className="dash-hero__cta">
+          <Link to="/app/actions" className="btn btn-primary">
+            View Action Plan
+            <IconArrowRight size={16} />
+          </Link>
+          <Link to="/app/budgets" className="btn btn-ghost" style={{ marginTop: 'var(--sp-2)' }}>
+            Review Budget
+          </Link>
+        </div>
       </header>
 
-      <div className="grid-4" style={{ marginBottom: 'var(--sp-8)' }} role="list" aria-label="Key metrics">
-        <article className="stat-card" role="listitem" aria-label="Debt-free date">
-          <div className="stat-card__label">Debt-Free Date</div>
-          <div className="stat-card__value debt-pulse display">
-            {fmtDate(data.debtFreeDate)}
+      {/* KPI context cards */}
+      <div
+        className="grid-4"
+        style={{ marginBottom: 'var(--sp-8)' }}
+        role="list"
+        aria-label="Key metrics"
+      >
+        <article className="stat-card" role="listitem" aria-label="Debt-Free Date">
+          <div className="stat-card__label">
+            Debt-Free Date
           </div>
+          <div className="stat-card__value debt-pulse display">{fmtDate(data.debtFreeDate)}</div>
           <div className="stat-card__sub">Projected payoff</div>
         </article>
 
         <article className="stat-card" role="listitem" aria-label="Projected interest saved">
-          <div className="stat-card__label">Interest Saved</div>
+          <div className="stat-card__label">
+            Interest Saved
+          </div>
           <div className="stat-card__value display">{fmt(data.interestSavedProjected)}</div>
-          <div className="stat-card__sub">Vs. minimum-only path</div>
+          <div className="stat-card__sub">Potential vs. minimum-only path</div>
         </article>
 
         <article className="stat-card" role="listitem" aria-label="Discretionary income">
           <div className="stat-card__label">Discretionary Income</div>
           <div className="stat-card__value display">{fmt(data.discretionaryIncome)}</div>
-          <div className="stat-card__sub">After bills & minimums</div>
+          <div className="stat-card__sub">After bills &amp; minimums</div>
         </article>
 
         <article className="stat-card" role="listitem" aria-label="Emergency fund coverage">
           <div className="stat-card__label">Emergency Fund</div>
           <div className="stat-card__value display">{emergencyMonths.toFixed(1)}mo</div>
           <div className="stat-card__sub">{fmt(data.emergencyFund)} liquid</div>
-          <div className={`stat-card__trend ${emergencyMonths >= 3 ? 'stat-card__trend--up' : 'stat-card__trend--down'}`}>
+          <div
+            className={`stat-card__trend ${
+              emergencyMonths >= 3 ? 'stat-card__trend--up' : 'stat-card__trend--down'
+            }`}
+          >
             {emergencyMonths >= 3 ? 'Healthy' : 'Below target'}
           </div>
         </article>
       </div>
 
+      {/* Next actions preview */}
       <section aria-labelledby="next-actions-heading">
         <div className="section-header">
-          <h2 className="section-header__title" id="next-actions-heading">Next Actions</h2>
+          <h2 className="section-header__title" id="next-actions-heading">
+            Next Actions
+          </h2>
           <Link to="/app/actions" className="section-header__action">
             View all →
           </Link>
+        </div>
+
+        <div className="readonly-notice" role="note" aria-label="Safety notice">
+          <span className="readonly-notice__icon" aria-hidden="true">
+            <IconShield size={14} />
+          </span>
+          <div className="readonly-notice__text">
+            <strong>Your money never moves automatically.</strong> Approve actions when you are
+            ready to execute them yourself at your bank.
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
@@ -125,14 +167,15 @@ export default function Dashboard() {
                   <div className="action-item__body">
                     <div className="action-item__title">{actionTitle(action)}</div>
                     <div className="action-item__desc">{action.reason}</div>
+                    <div className="action-item__meta">
+                      <span>Suggested {action.suggestedDate}</span>
+                      <span>Saves {fmt(action.interestImpact)} interest</span>
+                    </div>
                   </div>
                   <div className="action-item__amount">{fmt(action.amount)}</div>
                 </div>
                 <div className="action-item__controls">
                   <span className="badge badge-warning">{action.status}</span>
-                  <span className="badge badge-muted">
-                    saves {fmt(action.interestImpact)}
-                  </span>
                 </div>
               </article>
             )

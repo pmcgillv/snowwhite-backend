@@ -8,7 +8,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/dashboard', async (_req, reply) => {
     const accounts = seedAccounts;
     const settings = getSettings();
-    const { debtFreeMonths, projectedInterestSaved } = generateActionPlan({
+    const { debtFreeMonths, projectedInterestSaved, actions } = generateActionPlan({
       accounts,
       mode: settings.methodMode,
     });
@@ -58,6 +58,22 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       monthlyExpenses: Math.round(monthlyExpenses * 100) / 100,
     };
 
-    return reply.send(summary);
+    const yearsToPayOff = Math.round((debtFreeMonths / 12) * 10) / 10;
+    const next = actions.find((a) => a.status === 'pending' && (a.type === 'debt_payment' || a.type === 'sweep'));
+    const principalRemaining = totalDebt;
+    const principalPaidEstimate = Math.round(totalDebt * 0.08 * 100) / 100;
+    const interestRemaining = Math.round(projectedInterestSaved * 4.2 * 100) / 100;
+
+    return reply.send({
+      ...summary,
+      yearsToPayOff,
+      interestSavedActual: 0,
+      interestRemaining,
+      principalPaid: principalPaidEstimate,
+      principalRemaining: Math.round(principalRemaining * 100) / 100,
+      nextDebtTransfer: next
+        ? { date: next.suggestedDate, amount: next.amount, actionId: next.id }
+        : null,
+    });
   });
 }

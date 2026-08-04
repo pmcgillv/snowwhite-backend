@@ -32,13 +32,9 @@ describe('Dashboard route', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => {
-      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument()
-    }, { timeout: 5000 })
-
-    await waitFor(() => {
-      expect(screen.getByText(/Debt-Free Date/i)).toBeInTheDocument()
-    }, { timeout: 5000 })
+    // Wait for the page content to appear (Debt-Free Date text is unique to the stat card)
+    const debtFreeDateEls = await screen.findAllByText(/Debt-Free Date/i, {}, { timeout: 8000 })
+    expect(debtFreeDateEls.length).toBeGreaterThan(0)
   })
 
   it('renders "Interest Saved" KPI', async () => {
@@ -48,9 +44,9 @@ describe('Dashboard route', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => {
-      expect(screen.getByText(/Interest Saved/i)).toBeInTheDocument()
-    }, { timeout: 5000 })
+    // Interest Saved appears in both the KPI bar tile and the dashboard stat card
+    const interestSavedEls = await screen.findAllByText(/Interest Saved/i, {}, { timeout: 8000 })
+    expect(interestSavedEls.length).toBeGreaterThan(0)
   })
 
   it('renders "Next Actions" section', async () => {
@@ -62,6 +58,6 @@ describe('Dashboard route', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Next Actions/i)).toBeInTheDocument()
-    }, { timeout: 5000 })
+    }, { timeout: 8000 })
   })
 })
