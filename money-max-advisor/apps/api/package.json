@@ -1,0 +1,25 @@
+{
+  "name": "@money-max/api",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@money-max/shared": "*",
+    "fastify": "^4.27.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/uuid": "^9.0.8",
+    "tsx": "^4.15.6",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
