@@ -6,6 +6,4 @@ dist/
 *.log
 .DS_Store
 .vite/
-tsconfig.tsbuildinfo
-apps/web/tsconfig.tsbuildinfo
-apps/web/dist/
+*.tsbuildinfo
